@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>16进制编码/解码工具</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Microsoft YaHei', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 40px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .container {
+        max-width: 900px;
+        width: 100%;
+      }
+
+      h1 {
+        text-align: center;
+        color: white;
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      .subtitle {
+        text-align: center;
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.1rem;
+        margin-bottom: 40px;
+      }
+
+      .tool-container {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      }
+
+      .section {
+        margin-bottom: 40px;
+      }
+
+      .section:last-child {
+        margin-bottom: 0;
+      }
+
+      .section-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 3px solid #667eea;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .section-title::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        background: #667eea;
+        border-radius: 50%;
+      }
+
+      .input-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        font-weight: 500;
+        color: #555;
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 120px;
+        padding: 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        font-family: 'Courier New', monospace;
+        resize: vertical;
+        transition: all 0.3s ease;
+      }
+
+      textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .button-group {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        flex: 1;
+        min-width: 120px;
+        padding: 12px 30px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      button.secondary {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+      }
+
+      button.secondary:hover {
+        box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6);
+      }
+
+      button.clear {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        color: #333;
+        box-shadow: 0 4px 15px rgba(168, 237, 234, 0.4);
+      }
+
+      button.clear:hover {
+        box-shadow: 0 6px 20px rgba(168, 237, 234, 0.6);
+      }
+
+      .output-box {
+        background: #f8f9fa;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 15px;
+        min-height: 120px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.95rem;
+        color: #333;
+        word-break: break-all;
+        position: relative;
+        margin-bottom: 15px;
+      }
+
+      .output-box.empty {
+        color: #999;
+        font-style: italic;
+      }
+
+      .copy-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        padding: 6px 12px;
+        background: white;
+        border: 1px solid #667eea;
+        color: #667eea;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .copy-btn:hover {
+        background: #667eea;
+        color: white;
+      }
+
+      .info-box {
+        background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+        border-radius: 10px;
+        padding: 20px;
+        margin-top: 30px;
+      }
+
+      .info-box h3 {
+        color: #333;
+        margin-bottom: 15px;
+        font-size: 1.1rem;
+      }
+
+      .info-list {
+        list-style: none;
+      }
+
+      .info-list li {
+        color: #555;
+        padding: 8px 0;
+        padding-left: 25px;
+        position: relative;
+        line-height: 1.6;
+      }
+
+      .info-list li::before {
+        content: '✓';
+        position: absolute;
+        left: 0;
+        color: #667eea;
+        font-weight: bold;
+      }
+
+      .format-options {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+      }
+
+      .format-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .format-option input[type='radio'] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+      }
+
+      .format-option label {
+        margin: 0;
+        cursor: pointer;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+      }
+
+      .stat-card {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #667eea;
+      }
+
+      .stat-label {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 5px;
+      }
+
+      .divider {
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #667eea, transparent);
+        margin: 30px 0;
+      }
+
+      @media (max-width: 768px) {
+        h1 {
+          font-size: 1.8rem;
+        }
+
+        .tool-container {
+          padding: 25px;
+        }
+
+        .button-group {
+          flex-direction: column;
+        }
+
+        button {
+          width: 100%;
+        }
+      }
+
+      .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4caf50;
+        color: white;
+        padding: 15px 25px;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        opacity: 0;
+        transform: translateY(-20px);
+        transition: all 0.3s ease;
+        z-index: 1000;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🔢 16进制编码/解码工具</h1>
+      <p class="subtitle">支持普通文本与16进制之间的相互转换</p>
+
+      <div class="tool-container">
+        <!-- 编码部分 -->
+        <div class="section">
+          <div class="section-title">📝 文本转16进制（编码）</div>
+
+          <div class="input-group">
+            <label for="textInput">输入普通文本：</label>
+            <textarea
+              id="textInput"
+              placeholder="在此输入要编码的文本内容...支持中文、英文、特殊字符等"
+            ></textarea>
+          </div>
+
+          <div class="format-options">
+            <div class="format-option">
+              <input
+                type="radio"
+                id="formatNoSpace"
+                name="encodeFormat"
+                value="noSpace"
+                checked
+              />
+              <label for="formatNoSpace">无空格 (68656c6c6f)</label>
+            </div>
+            <div class="format-option">
+              <input
+                type="radio"
+                id="formatWithSpace"
+                name="encodeFormat"
+                value="withSpace"
+              />
+              <label for="formatWithSpace">带空格 (68 65 6c 6c 6f)</label>
+            </div>
+            <div class="format-option">
+              <input
+                type="radio"
+                id="formatWith0x"
+                name="encodeFormat"
+                value="with0x"
+              />
+              <label for="formatWith0x">带0x前缀 (0x68656c6c6f)</label>
+            </div>
+          </div>
+
+          <div class="button-group">
+            <button onclick="encodeToHex()">🔐 转换为16进制</button>
+            <button class="clear" onclick="clearEncode()">🗑️ 清空</button>
+          </div>
+
+          <div class="input-group">
+            <label>编码结果：</label>
+            <div id="hexOutput" class="output-box empty">
+              编码结果将显示在这里...
+            </div>
+            <button
+              class="copy-btn"
+              onclick="copyToClipboard('hexOutput')"
+              style="position: static; width: 100%"
+            >
+              📋 复制结果
+            </button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 解码部分 -->
+        <div class="section">
+          <div class="section-title">🔓 16进制转文本（解码）</div>
+
+          <div class="input-group">
+            <label for="hexInput">输入16进制字符串：</label>
+            <textarea
+              id="hexInput"
+              placeholder="在此输入16进制字符串...支持带空格、0x前缀等格式"
+            ></textarea>
+          </div>
+
+          <div class="button-group">
+            <button class="secondary" onclick="decodeFromHex()">
+              🔓 转换为文本
+            </button>
+            <button class="clear" onclick="clearDecode()">🗑️ 清空</button>
+          </div>
+
+          <div class="input-group">
+            <label>解码结果：</label>
+            <div id="textOutput" class="output-box empty">
+              解码结果将显示在这里...
+            </div>
+            <button
+              class="copy-btn"
+              onclick="copyToClipboard('textOutput')"
+              style="position: static; width: 100%"
+            >
+              📋 复制结果
+            </button>
+          </div>
+        </div>
+
+        <!-- 统计信息 -->
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-value" id="textLength">0</div>
+            <div class="stat-label">文本字符数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="hexLength">0</div>
+            <div class="stat-label">16进制长度</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="byteLength">0</div>
+            <div class="stat-label">字节数</div>
+          </div>
+        </div>
+
+        <!-- 使用说明 -->
+        <div class="info-box">
+          <h3>📖 使用说明</h3>
+          <ul class="info-list">
+            <li>
+              <strong>编码：</strong
+              >将普通文本（包括中文、英文、特殊字符）转换为16进制字符串
+            </li>
+            <li><strong>解码：</strong>将16进制字符串还原为原始文本内容</li>
+            <li>
+              <strong>格式支持：</strong>解码时自动识别并处理 0x 前缀和空格
+            </li>
+            <li>
+              <strong>编码格式：</strong>UTF-8编码，确保中文等多字节字符正确处理
+            </li>
+            <li>
+              <strong>应用场景：</strong>区块链数据处理、加密通信、数据传输等
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+      // 文本转16进制
+      function encodeToHex() {
+        const text = document.getElementById('textInput').value;
+        if (!text) {
+          showToast('请输入要编码的文本', 'error');
+          return;
+        }
+
+        try {
+          // 使用 TextEncoder 将文本转换为 UTF-8 字节数组
+          const encoder = new TextEncoder();
+          const bytes = encoder.encode(text);
+
+          // 将字节数组转换为16进制字符串
+          let hexString = Array.from(bytes)
+            .map((byte) => byte.toString(16).padStart(2, '0'))
+            .join('');
+
+          // 根据选择的格式处理输出
+          const format = document.querySelector(
+            'input[name="encodeFormat"]:checked'
+          ).value;
+          if (format === 'withSpace') {
+            hexString = hexString.match(/.{1,2}/g).join(' ');
+          } else if (format === 'with0x') {
+            hexString = '0x' + hexString;
+          }
+
+          const outputElement = document.getElementById('hexOutput');
+          outputElement.textContent = hexString;
+          outputElement.classList.remove('empty');
+
+          updateStats(
+            text.length,
+            bytes.length,
+            hexString.replace(/[\s0x]/g, '').length
+          );
+          showToast('编码成功！');
+        } catch (error) {
+          showToast('编码失败：' + error.message, 'error');
+        }
+      }
+
+      // 16进制转文本
+      function decodeFromHex() {
+        let hexString = document.getElementById('hexInput').value.trim();
+        if (!hexString) {
+          showToast('请输入要解码的16进制字符串', 'error');
+          return;
+        }
+
+        try {
+          // 清理输入：移除 0x 前缀和空格
+          hexString = hexString.replace(/^0x/i, '').replace(/\s+/g, '');
+
+          // 验证16进制格式
+          if (!/^[0-9a-fA-F]*$/.test(hexString)) {
+            throw new Error('输入包含非16进制字符');
+          }
+
+          if (hexString.length % 2 !== 0) {
+            throw new Error('16进制字符串长度必须是偶数');
+          }
+
+          // 将16进制字符串转换为字节数组
+          const bytes = new Uint8Array(
+            hexString.match(/.{1,2}/g).map((byte) => parseInt(byte, 16))
+          );
+
+          // 使用 TextDecoder 将字节数组解码为文本
+          const decoder = new TextDecoder('utf-8');
+          const text = decoder.decode(bytes);
+
+          const outputElement = document.getElementById('textOutput');
+          outputElement.textContent = text;
+          outputElement.classList.remove('empty');
+
+          updateStats(text.length, bytes.length, hexString.length);
+          showToast('解码成功！');
+        } catch (error) {
+          showToast('解码失败：' + error.message, 'error');
+        }
+      }
+
+      // 复制到剪贴板
+      function copyToClipboard(elementId) {
+        const element = document.getElementById(elementId);
+        const text = element.textContent;
+
+        if (element.classList.contains('empty')) {
+          showToast('没有可复制的内容', 'error');
+          return;
+        }
+
+        navigator.clipboard
+          .writeText(text)
+          .then(() => {
+            showToast('已复制到剪贴板！');
+          })
+          .catch((err) => {
+            // 降级方案
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast('已复制到剪贴板！');
+          });
+      }
+
+      // 清空编码区域
+      function clearEncode() {
+        document.getElementById('textInput').value = '';
+        const outputElement = document.getElementById('hexOutput');
+        outputElement.textContent = '编码结果将显示在这里...';
+        outputElement.classList.add('empty');
+        updateStats(0, 0, 0);
+      }
+
+      // 清空解码区域
+      function clearDecode() {
+        document.getElementById('hexInput').value = '';
+        const outputElement = document.getElementById('textOutput');
+        outputElement.textContent = '解码结果将显示在这里...';
+        outputElement.classList.add('empty');
+        updateStats(0, 0, 0);
+      }
+
+      // 更新统计信息
+      function updateStats(textLen, byteLen, hexLen) {
+        document.getElementById('textLength').textContent = textLen;
+        document.getElementById('byteLength').textContent = byteLen;
+        document.getElementById('hexLength').textContent = hexLen;
+      }
+
+      // 显示提示消息
+      function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.style.background = type === 'error' ? '#f44336' : '#4caf50';
+        toast.classList.add('show');
+
+        setTimeout(() => {
+          toast.classList.remove('show');
+        }, 3000);
+      }
+
+      // 监听输入框变化，实时更新字符统计
+      document
+        .getElementById('textInput')
+        .addEventListener('input', function (e) {
+          const text = e.target.value;
+          if (text) {
+            const encoder = new TextEncoder();
+            const bytes = encoder.encode(text);
+            updateStats(text.length, bytes.length, bytes.length * 2);
+          } else {
+            updateStats(0, 0, 0);
+          }
+        });
+
+      document
+        .getElementById('hexInput')
+        .addEventListener('input', function (e) {
+          const hex = e.target.value.replace(/[^0-9a-fA-F]/g, '');
+          if (hex) {
+            updateStats(0, hex.length / 2, hex.length);
+          } else {
+            updateStats(0, 0, 0);
+          }
+        });
+
+      // 页面加载时添加示例
+      window.addEventListener('load', function () {
+        // 可以在这里添加一些示例数据
+      });
+    </script>
+  </body>
+</html>

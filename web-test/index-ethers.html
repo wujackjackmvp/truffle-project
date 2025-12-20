@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>使用 Ethers.js 连接钱包</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+      }
+      button {
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+      p {
+        font-size: 16px;
+        line-height: 1.6;
+      }
+      #address {
+        color: #2196F3;
+        word-break: break-all;
+      }
+      #balance {
+        color: #4CAF50;
+        font-weight: bold;
+      }
+      .info {
+        background-color: #f0f0f0;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>使用 Ethers.js 连接钱包</h1>
+    <p>使用 ethers.js 库连接钱包，获取钱包地址和余额</p>
+
+    <button id="connect">连接钱包</button>
+
+    <div class="info">
+      <p>钱包地址: <span id="address">未连接</span></p>
+      <p>余额: <span id="balance">-</span> ETH</p>
+      <p>网络: <span id="network">-</span></p>
+    </div>
+
+    <!-- 引入 ethers.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
+
+    <script>
+      const connectButton = document.getElementById('connect');
+
+      connectButton.addEventListener('click', async () => {
+        // 检查 MetaMask 是否已安装
+        if (typeof window.ethereum === 'undefined') {
+          alert('请安装 MetaMask 钱包插件！');
+          console.log('请安装 MetaMask');
+          return;
+        }
+
+        try {
+          // 禁用按钮防止重复点击
+          connectButton.disabled = true;
+          connectButton.textContent = '连接中...';
+
+          // 使用 ethers.js 创建 Provider
+          // BrowserProvider 是 ethers v6 中用于浏览器环境的 Provider
+          const provider = new ethers.BrowserProvider(window.ethereum);
+
+          // 请求用户授权连接钱包
+          // 这会弹出 MetaMask 授权窗口
+          await provider.send("eth_requestAccounts", []);
+
+          // 获取 Signer（签名者）
+          const signer = await provider.getSigner();
+
+          // 获取钱包地址
+          const address = await signer.getAddress();
+          console.log('Connected account:', address);
+          document.getElementById('address').textContent = address;
+
+          // 获取余额
+          const balance = await provider.getBalance(address);
+
+          // 将 Wei 转换为 ETH（ethers 提供了 formatEther 方法）
+          const balanceInEth = ethers.formatEther(balance);
+          document.getElementById('balance').textContent = balanceInEth;
+
+          // 获取网络信息
+          const network = await provider.getNetwork();
+          console.log('Network:', network);
+          document.getElementById('network').textContent = `${network.name} (Chain ID: ${network.chainId})`;
+
+          // 更新按钮状态
+          connectButton.textContent = '已连接';
+          connectButton.style.backgroundColor = '#2196F3';
+
+        } catch (error) {
+          console.error('连接钱包失败:', error);
+
+          // 错误处理
+          if (error.code === 4001) {
+            alert('用户拒绝了连接请求');
+          } else {
+            alert('连接钱包失败: ' + error.message);
+          }
+
+          // 恢复按钮状态
+          connectButton.disabled = false;
+          connectButton.textContent = '连接钱包';
+          connectButton.style.backgroundColor = '#4CAF50';
+        }
+      });
+
+      // 监听账户变化
+      if (window.ethereum) {
+        window.ethereum.on('accountsChanged', async (accounts) => {
+          console.log('账户已变化:', accounts);
+          if (accounts.length === 0) {
+            // 用户断开了连接
+            document.getElementById('address').textContent = '未连接';
+            document.getElementById('balance').textContent = '-';
+            document.getElementById('network').textContent = '-';
+            connectButton.disabled = false;
+            connectButton.textContent = '连接钱包';
+            connectButton.style.backgroundColor = '#4CAF50';
+          } else {
+            // 账户已切换，重新获取信息
+            location.reload();
+          }
+        });
+
+        // 监听网络变化
+        window.ethereum.on('chainChanged', (chainId) => {
+          console.log('网络已变化:', chainId);
+          // 网络变化时重新加载页面
+          location.reload();
+        });
+      }
+    </script>
+  </body>
+</html>

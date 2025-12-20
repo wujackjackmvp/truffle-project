@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>调用钱包</title>
+  </head>
+  <body>
+    使用原生的JavaScript API链接钱包 获取钱包地址和余额
+    <button id="connect">连接钱包</button>
+    <p>钱包地址: <span id="address">未连接</span></p>
+    <p>余额: <span id="balance">-</span> ETH</p>
+    <script>
+      document.getElementById('connect').addEventListener('click', async () => {
+        if (typeof window.ethereum === 'undefined') {
+          //   if (provider?.isMetaMask) {
+          //     console.log('MetaMask');
+          //   }
+          console.log('请安装 MetaMask');
+          return;
+        }
+        //  window.ethereum 下面的api超级多
+        // web3业务！defi gamefi pwa...
+        try {
+          const accounts = await window.ethereum.request({
+            //强行弹出钱包
+            method: 'eth_requestAccounts',
+          });
+          //很多账户
+          const address = accounts[0];
+          console.log('Connected account:', address);
+          document.getElementById('address').textContent = address;
+          const balance = await window.ethereum.request({
+            //查看一下账户余额
+            method: 'eth_getBalance',
+            params: [address, 'latest'],
+          });
+          const balanceInEth = parseFloat(balance) / 1e18; // 转换为以太币单位
+          document.getElementById('balance').textContent = balanceInEth;
+        } catch (error) {
+          console.error('连接钱包失败:', error);
+        }
+      });
+    </script>
+  </body>
+</html>

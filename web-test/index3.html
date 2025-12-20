@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>InfoContract 链上交互</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      }
+      h1 {
+        color: #667eea;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .section {
+        margin-bottom: 30px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+      }
+      .section h2 {
+        color: #764ba2;
+        margin-bottom: 15px;
+        font-size: 20px;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        color: #333;
+        font-weight: bold;
+      }
+      input[type='text'],
+      input[type='number'] {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+      }
+      input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+      button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+        transition: transform 0.2s;
+        width: 100%;
+      }
+      button:hover {
+        transform: translateY(-2px);
+      }
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .info-box {
+        background: white;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 10px;
+      }
+      .info-box p {
+        margin: 5px 0;
+        color: #333;
+      }
+      .status {
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        text-align: center;
+        font-weight: bold;
+      }
+      .status.success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status.error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .status.info {
+        background: #d1ecf1;
+        color: #0c5460;
+      }
+      .hidden {
+        display: none;
+      }
+      .contract-info {
+        font-size: 12px;
+        color: #666;
+        word-break: break-all;
+      }
+      .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-left: 10px;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .event-item {
+        background: white;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        border-left: 4px solid #667eea;
+        animation: slideIn 0.3s ease-out;
+      }
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      .event-item .event-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-weight: bold;
+        color: #667eea;
+      }
+      .event-item .event-time {
+        font-size: 12px;
+        color: #999;
+      }
+      .event-item .event-data {
+        color: #333;
+        font-size: 14px;
+        margin: 5px 0;
+      }
+      .event-item .event-block {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+      }
+      .listening {
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.6;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>📝 InfoContract 链上交互</h1>
+
+      <!-- 状态显示 -->
+      <div id="status" class="status hidden"></div>
+
+      <!-- 连接钱包 -->
+       
+      <div class="section">
+        <h2>🔗 连接钱包</h2>
+        <button id="connectBtn">连接 MetaMask</button>
+        <div id="accountInfo" class="info-box hidden">
+          <p><strong>账户地址:</strong> <span id="accountAddress"></span></p>
+          <p><strong>当前网络:</strong> <span id="networkName"></span></p>
+          <p><strong>余额:</strong> <span id="balance"></span> ETH</p>
+        </div>
+        <div id="networkSwitch" class="hidden" style="margin-top: 15px">
+          <label style="display: block; margin-bottom: 5px">切换网络:</label>
+          <select
+            id="networkSelector"
+            style="
+              width: 100%;
+              padding: 10px;
+              border: 2px solid #ddd;
+              border-radius: 5px;
+              margin-bottom: 10px;
+            "
+          >
+            <option value="">-- 选择网络 --</option>
+            <option value="0x539">本地测试网 (Ganache - 127.0.0.1:7545)</option>
+            <option value="0x1">以太坊主网 (Mainnet)</option>
+            <option value="0xaa36a7">Sepolia 测试网</option>
+            <option value="0x5">Goerli 测试网</option>
+            <option value="0x38">BSC 主网</option>
+            <option value="0x61">BSC 测试网</option>
+            <option value="0x89">Polygon 主网</option>
+            <option value="0x13882">Polygon Amoy 测试网</option>
+          </select>
+          <button id="switchNetworkBtn" style="width: 100%">
+            切换到选中网络
+          </button>
+        </div>
+      </div>
+
+      <!-- 读取操作 -->
+      <div class="section">
+        <h2>📖 读取数据 (免费)</h2>
+        <button id="sayHiBtn" style="margin-bottom: 10px">调用 sayHi()</button>
+        <button id="getInfoBtn">调用 getInfo()</button>
+        <div id="readResult" class="info-box hidden">
+          <p id="readResultText"></p>
+        </div>
+      </div>
+
+      <!-- 写入操作 -->
+      <div class="section">
+        <h2>✍️ 写入数据 (需要 Gas)</h2>
+        <div class="form-group">
+          <label for="nameInput">姓名:</label>
+          <input type="text" id="nameInput" placeholder="请输入姓名" />
+        </div>
+        <div class="form-group">
+          <label for="ageInput">年龄:</label>
+          <input type="number" id="ageInput" placeholder="请输入年龄" />
+        </div>
+        <button id="setInfoBtn">调用 setInfo()</button>
+        <div id="txResult" class="info-box hidden">
+          <p id="txResultText"></p>
+        </div>
+      </div>
+
+      <!-- 事件监听 -->
+      <div class="section">
+        <h2>📡 事件监听</h2>
+        <div style="display: flex; gap: 10px; margin-bottom: 15px">
+          <button id="startListenBtn" style="flex: 1">开始监听</button>
+          <button id="stopListenBtn" style="flex: 1; background: #dc3545">
+            停止监听
+          </button>
+          <button id="clearEventsBtn" style="flex: 1; background: #6c757d">
+            清空日志
+          </button>
+        </div>
+        <div id="eventStatus" class="info-box" style="background: #e9ecef">
+          <p>
+            <strong>监听状态:</strong> <span id="listenStatus">未开始</span>
+          </p>
+          <p><strong>接收事件数:</strong> <span id="eventCount">0</span></p>
+        </div>
+        <div
+          id="eventLogs"
+          style="margin-top: 15px; max-height: 300px; overflow-y: auto"
+        >
+          <!-- 事件日志将显示在这里 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 引入 jQuery 和 ethers.js -->
+    <script src="./node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="./node_modules/ethers/dist/ethers.umd.min.js"></script>
+    <script>
+      // 全局变量
+      let provider;
+      let signer;
+      let contract;
+      let userAddress;
+      let eventListener = null;
+      let eventCount = 0;
+      let isListening = false;
+      let contractData = null; // 存储从 InfoContract.json 加载的数据
+
+      // 网络配置信息
+      const networkConfigs = {
+        '0x539': {
+          chainId: '0x539',
+          chainName: 'Local Testnet (Ganache)',
+          nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+          rpcUrls: ['http://127.0.0.1:7545'],
+          blockExplorerUrls: [],
+        },
+        '0x1': {
+          chainId: '0x1',
+          chainName: 'Ethereum Mainnet',
+          nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+          rpcUrls: ['https://mainnet.infura.io/v3/'],
+          blockExplorerUrls: ['https://etherscan.io'],
+        },
+        '0xaa36a7': {
+          chainId: '0xaa36a7',
+          chainName: 'Sepolia Testnet',
+          nativeCurrency: {
+            name: 'Sepolia Ether',
+            symbol: 'ETH',
+            decimals: 18,
+          },
+          rpcUrls: ['https://sepolia.infura.io/v3/'],
+          blockExplorerUrls: ['https://sepolia.etherscan.io'],
+        },
+        '0x5': {
+          chainId: '0x5',
+          chainName: 'Goerli Testnet',
+          nativeCurrency: { name: 'Goerli Ether', symbol: 'ETH', decimals: 18 },
+          rpcUrls: ['https://goerli.infura.io/v3/'],
+          blockExplorerUrls: ['https://goerli.etherscan.io'],
+        },
+        '0x38': {
+          chainId: '0x38',
+          chainName: 'BSC Mainnet',
+          nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+          rpcUrls: ['https://bsc-dataseed1.binance.org'],
+          blockExplorerUrls: ['https://bscscan.com'],
+        },
+        '0x61': {
+          chainId: '0x61',
+          chainName: 'BSC Testnet',
+          nativeCurrency: { name: 'tBNB', symbol: 'tBNB', decimals: 18 },
+          rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545'],
+          blockExplorerUrls: ['https://testnet.bscscan.com'],
+        },
+        '0x89': {
+          chainId: '0x89',
+          chainName: 'Polygon Mainnet',
+          nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
+          rpcUrls: ['https://polygon-rpc.com'],
+          blockExplorerUrls: ['https://polygonscan.com'],
+        },
+        '0x13882': {
+          chainId: '0x13882',
+          chainName: 'Polygon Amoy Testnet',
+          nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
+          rpcUrls: ['https://rpc-amoy.polygon.technology'],
+          blockExplorerUrls: ['https://amoy.polygonscan.com'],
+        },
+      };
+
+      // 加载合约 JSON 数据
+      async function loadContractJson() {
+        try {
+          const response = await fetch('./build/InfoContract.json');
+          if (!response.ok) {
+            throw new Error('无法加载 InfoContract.json');
+          }
+          contractData = await response.json();
+          console.log('合约数据已加载:', contractData);
+          return contractData;
+        } catch (error) {
+          console.error('加载合约 JSON 失败:', error);
+          throw error;
+        }
+      }
+
+      // 页面加载时自动加载合约 JSON
+      $(document).ready(async function () {
+        try {
+          await loadContractJson();
+          showStatus('📄 合约配置文件已加载', 'success');
+        } catch (error) {
+          showStatus('❌ 加载合约配置失败: ' + error.message, 'error');
+        }
+      });
+
+      // 显示状态消息
+      function showStatus(message, type = 'info') {
+        $('#status')
+          .removeClass('hidden success error info')
+          .addClass(type)
+          .text(message);
+        setTimeout(() => {
+          $('#status').addClass('hidden');
+        }, 5000);
+      }
+
+      // 连接 MetaMask
+      $('#connectBtn').click(async function () {
+        try {
+          if (typeof window.ethereum === 'undefined') {
+            showStatus('❌ 请先安装 MetaMask!', 'error');
+            return;
+          }
+
+          $(this).prop('disabled', true).text('连接中...');
+
+          // 请求账户访问
+          const accounts = await window.ethereum.request({
+            method: 'eth_requestAccounts',
+          });
+
+          userAddress = accounts[0];
+
+          // 创建 provider 和 signer
+          provider = new ethers.BrowserProvider(window.ethereum);
+          signer = await provider.getSigner();
+
+          // 获取网络信息
+          let network = await provider.getNetwork();
+          const targetChainId = '0x539'; // 本地测试网
+
+          // 检查是否需要切换到本地测试网
+          if (network.chainId.toString(16) !== targetChainId.substring(2)) {
+            showStatus('🔄 正在切换到本地测试网...', 'info');
+
+            try {
+              // 尝试切换到本地测试网
+              await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: targetChainId }],
+              });
+            } catch (switchError) {
+              // 如果网络不存在，尝试添加网络
+              if (switchError.code === 4902) {
+                const networkConfig = networkConfigs[targetChainId];
+                await window.ethereum.request({
+                  method: 'wallet_addEthereumChain',
+                  params: [networkConfig],
+                });
+              } else {
+                throw switchError;
+              }
+            }
+
+            // 重新获取网络信息
+            provider = new ethers.BrowserProvider(window.ethereum);
+            signer = await provider.getSigner();
+            network = await provider.getNetwork();
+          }
+
+          const balance = await provider.getBalance(userAddress);
+
+          // 显示账户信息
+          $('#accountAddress').text(userAddress);
+          $('#networkName').text(
+            network.name == 'unknown'
+              ? 'LocalHost'
+              : network.name + ' (Chain ID: ' + network.chainId + ')'
+          );
+          $('#balance').text(ethers.formatEther(balance));
+          $('#accountInfo').removeClass('hidden');
+          $('#networkSwitch').removeClass('hidden');
+
+          $(this).text('✅ 已连接').css('background', '#28a745');
+          showStatus('✅ 钱包连接成功!', 'success');
+
+          // 自动加载合约
+          setTimeout(async () => {
+            await loadContract();
+          }, 500);
+        } catch (error) {
+          console.error(error);
+          showStatus('❌ 连接失败: ' + error.message, 'error');
+          $(this).prop('disabled', false).text('连接 MetaMask');
+        }
+      });
+
+      // 自动加载合约函数
+      async function loadContract() {
+        try {
+          if (!contractData) {
+            showStatus('❌ 合约配置文件未加载!', 'error');
+            return false;
+          }
+
+          if (!signer) {
+            showStatus('❌ 请先连接钱包!', 'error');
+            return false;
+          }
+
+          // 获取当前网络
+          const network = await provider.getNetwork();
+          const chainId = network.chainId.toString();
+
+          console.log('当前网络 Chain ID:', chainId);
+
+          // 从 contractData.networks 中获取合约地址
+          const networkInfo = contractData.networks[5777];
+
+          if (!networkInfo) {
+            throw new Error( mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
+              `合约未部署在当前网络 (Chain ID: ${chainId})。可用网络: ${Object.keys(
+                contractData.networks
+              ).join(', ')}`
+            );
+          }
+
+          const contractAddress = networkInfo.address;
+          const contractABI = contractData.abi;
+
+          console.log('合约地址:', contractAddress);
+          console.log('合约 ABI:', contractABI);
+
+          // 创建合约实例
+          contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+          // 测试合约是否有效
+          await contract.sayHi();
+
+          showStatus('✅ 合约已自动加载!', 'success');
+          return true;
+        } catch (error) {
+          console.error('合约加载失败:', error);
+          showStatus('❌ 合约加载失败: ' + error.message, 'error');
+          return false;
+        }
+      }
+
+      // 调用 sayHi
+      $('#sayHiBtn').click(async function () {
+        try {
+          if (!contract) {
+            showStatus('❌ 请先加载合约!', 'error');
+            return;
+          }
+
+          $(this)
+            .prop('disabled', true)
+            .html('调用中... <span class="loading"></span>');
+
+          const result = await contract.sayHi();
+
+          $('#readResultText').html(
+            `<strong>sayHi() 返回:</strong><br>${result}`
+          );
+          $('#readResult').removeClass('hidden');
+
+          $(this).prop('disabled', false).text('调用 sayHi()');
+          showStatus('✅ 调用成功!', 'success');
+        } catch (error) {
+          console.error(error);
+          showStatus('❌ 调用失败: ' + error.message, 'error');
+          $(this).prop('disabled', false).text('调用 sayHi()');
+        }
+      });
+
+      // 调用 getInfo
+      $('#getInfoBtn').click(async function () {
+        try {
+          if (!contract) {
+            showStatus('❌ 请先加载合约!', 'error');
+            return;
+          }
+
+          $(this)
+            .prop('disabled', true)
+            .html('调用中... <span class="loading"></span>');
+
+          const result = await contract.getInfo();
+
+          $('#readResultText').html(`
+            <strong>getInfo() 返回:</strong><br>
+            姓名: ${result[0]}<br>
+            年龄: ${result[1].toString()}
+          `);
+          $('#readResult').removeClass('hidden');
+
+          $(this).prop('disabled', false).text('调用 getInfo()');
+          showStatus('✅ 调用成功!', 'success');
+        } catch (error) {
+          console.error(error);
+          showStatus('❌ 调用失败: ' + error.message, 'error');
+          $(this).prop('disabled', false).text('调用 getInfo()');
+        }
+      });
+
+      // 调用 setInfo
+      $('#setInfoBtn').click(async function () {
+        try {
+          if (!contract) {
+            showStatus('❌ 请先加载合约!', 'error');
+            return;
+          }
+
+          const name = $('#nameInput').val().trim();
+          const age = $('#ageInput').val().trim();
+
+          if (!name || !age) {
+            showStatus('❌ 请输入姓名和年龄!', 'error');
+            return;
+          }
+
+          $(this)
+            .prop('disabled', true)
+            .html('交易中... <span class="loading"></span>');
+
+          // 发送交易
+          const tx = await contract.setInfo(name, age);
+
+          $('#txResultText').html(`
+            <strong>⏳ 交易已发送，等待确认...</strong><br>
+            交易哈希: ${tx.hash}
+          `);
+          $('#txResult').removeClass('hidden');
+
+          // 等待交易确认
+          const receipt = await tx.wait();
+
+          $('#txResultText').html(`
+            <strong>✅ 交易成功!</strong><br>
+            交易哈希: ${receipt.hash}<br>
+          `);
+
+          $(this).prop('disabled', false).text('调用 setInfo()');
+          showStatus('✅ 交易成功!', 'success');
+
+          // 清空输入框
+          $('#nameInput').val('');
+          $('#ageInput').val('');
+        } catch (error) {
+          console.error(error);
+          showStatus('❌ 交易失败: ' + error.message, 'error');
+          $(this).prop('disabled', false).text('调用 setInfo()');
+        }
+      });
+
+      // 添加事件日志到页面
+      function addEventLog(eventData) {
+        eventCount++;
+        $('#eventCount').text(eventCount);
+
+        const timestamp = new Date().toLocaleString('zh-CN');
+        const eventHtml = `
+          <div class="event-item">
+            <div class="event-header">
+              <span>🔔 Instructor 事件</span>
+              <span class="event-time">${timestamp}</span>
+            </div>
+            <div class="event-data">
+              👤 姓名: ${eventData.name}
+            </div>
+            <div class="event-data">
+              🎂 年龄: ${eventData.age.toString()}
+            </div>
+            <div class="event-block">
+              📦 区块号: ${eventData.blockNumber}
+            </div>
+            <div class="event-block">
+              🔗 交易哈希: ${eventData.transactionHash}
+            </div>
+          </div>
+        `;
+
+        $('#eventLogs').prepend(eventHtml);
+        showStatus('🔔 收到新事件!', 'success');
+      }
+
+      // 开始监听事件
+      $('#startListenBtn').click(async function () {
+        try {
+          if (!contract) {
+            showStatus('❌ 请先加载合约!', 'error');
+            return;
+          }
+
+          if (isListening) {
+            showStatus('⚠️ 已经在监听中!', 'info');
+            return;
+          }
+
+          $(this).prop('disabled', true);
+
+          // 监听 Instructor 事件
+          contract.on('Instructor', (name, age, event) => {
+            console.log('收到事件:', { name, age, event });
+
+            // 获取事件详情
+            event.getBlock().then((block) => {
+              addEventLog({
+                name: name,
+                age: age,
+                blockNumber: event.blockNumber,
+                transactionHash: event.transactionHash,
+                blockTime: new Date(block.timestamp * 1000).toLocaleString(
+                  'zh-CN'
+                ),
+              });
+            });
+          });
+
+          isListening = true;
+          $('#listenStatus').text('🟢 监听中...').addClass('listening');
+          showStatus('✅ 开始监听事件!', 'success');
+        } catch (error) {
+          console.error(error);
+          showStatus('❌ 启动监听失败: ' + error.message, 'error');
+          $(this).prop('disabled', false);
+        }
+      });
+
+      // 停止监听事件
+      $('#stopListenBtn').click(function () {
+        if (!contract) {
+          showStatus('❌ 请先加载合约!', 'error');
+          return;
+        }
+
+        if (!isListening) {
+          showStatus('⚠️ 未在监听中!', 'info');
+          return;
+        }
+
+        // 移除所有事件监听器
+        contract.removeAllListeners('Instructor');
+
+        isListening = false;
+        $('#listenStatus').text('🔴 已停止').removeClass('listening');
+        $('#startListenBtn').prop('disabled', false);
+        showStatus('⏹️ 已停止监听', 'info');
+      });
+
+      // 清空事件日志
+      $('#clearEventsBtn').click(function () {
+        $('#eventLogs').empty();
+        eventCount = 0;
+        $('#eventCount').text('0');
+        showStatus('🗑️ 已清空日志', 'info');
+      });
+
+      // 切换网络
+      $('#switchNetworkBtn').click(async function () {
+        try {
+          const selectedChainId = $('#networkSelector').val();
+
+          if (!selectedChainId) {
+            showStatus('❌ 请先选择一个网络!', 'error');
+            return;
+          }
+
+          if (typeof window.ethereum === 'undefined') {
+            showStatus('❌ 请先安装 MetaMask!', 'error');
+            return;
+          }
+
+          $(this).prop('disabled', true).text('切换中...');
+
+          try {
+            // 尝试切换到目标网络
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: selectedChainId }],
+            });
+
+            showStatus('✅ 网络切换成功!', 'success');
+
+            // 切换成功后刷新页面信息
+            setTimeout(() => {
+              location.reload();
+            }, 1000);
+          } catch (switchError) {
+            // 如果网络不存在，尝试添加网络
+            if (switchError.code === 4902) {
+              try {
+                const networkConfig = networkConfigs[selectedChainId];
+
+                await window.ethereum.request({
+                  method: 'wallet_addEthereumChain',
+                  params: [networkConfig],
+                });
+
+                showStatus('✅ 网络添加并切换成功!', 'success');
+
+                setTimeout(() => {
+                  location.reload();
+                }, 1000);
+              } catch (addError) {
+                console.error('添加网络失败:', addError);
+                showStatus('❌ 添加网络失败: ' + addError.message, 'error');
+              }
+            } else {
+              console.error('切换网络失败:', switchError);
+              showStatus('❌ 切换网络失败: ' + switchError.message, 'error');
+            }
+          }
+
+          $(this).prop('disabled', false).text('切换到选中网络');
+        } catch (error) {
+          console.error('网络切换错误:', error);
+          showStatus('❌ 操作失败: ' + error.message, 'error');
+          $(this).prop('disabled', false).text('切换到选中网络');
+        }
+      });
+
+      // 监听账户切换
+      if (window.ethereum) {
+        window.ethereum.on('accountsChanged', function (accounts) {
+          if (accounts.length === 0) {
+            showStatus('❌ 钱包已断开连接', 'error');
+            location.reload();
+          } else {
+            location.reload();
+          }
+        });
+
+        window.ethereum.on('chainChanged', function () {
+          location.reload();
+        });
+      }
+    </script>
+  </body>
+</html>
