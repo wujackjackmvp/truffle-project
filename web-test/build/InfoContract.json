@@ -8266,12 +8266,12 @@
     "5777": {
       "events": {},
       "links": {},
-      "address": "0x6AF5152Baf9667FD65D0fE371f468Af89249337E",
-      "transactionHash": "0xa43875e14aaceeeb681366ed10e4a91cc9ec355938b7180aa7c69b36cd991cd3"
+      "address": "0x6009dfd9D98bC35645D76BfDb5e70F547Ff7A714",
+      "transactionHash": "0xc3e9d7fcfcf85eaef6b5d59dfa11a89d40f2d463dd93b5aa9cdd6f5c33e68caf"
     }
   },
   "schemaVersion": "3.4.16",
-  "updatedAt": "2025-12-22T14:00:30.806Z",
+  "updatedAt": "2025-12-22T14:12:17.809Z",
   "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",
