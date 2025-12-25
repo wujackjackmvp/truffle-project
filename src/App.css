@@ -247,3 +247,11 @@ button:disabled {
   background: #fff3e0;
   border-radius: 8px;
 }
+
+.nav {
+  margin-bottom: 20px;
+}
+.nav-link {
+  color: #FFF;
+  margin:0 10px;
+}
