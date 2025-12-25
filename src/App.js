@@ -1,10 +1,10 @@
 // import logo from './logo.svg';
 import './App.css';
-import Content from './view/Content'
+import BaseComponent from './base';
 function App() {
   return (
     <div className="App">
-      <Content></Content>
+      <BaseComponent></BaseComponent>
     </div>
   );
 }
