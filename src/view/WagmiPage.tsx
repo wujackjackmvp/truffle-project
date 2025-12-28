@@ -3,6 +3,13 @@ import { useAccount, useConnect, useDisconnect, useNetwork } from 'wagmi';
 import { InjectedConnector } from 'wagmi/connectors/injected';
 import { ethers } from 'ethers';
 
+// 扩展Window接口，添加ethereum属性
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 // 合约ABI
 const contractABI = [
   {
@@ -37,16 +44,16 @@ const contractABI = [
 // 主组件
 const WagmiPage = () => {
   // 状态
-  const [contractAddress, setContractAddress] = useState('');
-  const [status, setStatus] = useState(null);
-  const [statusType, setStatusType] = useState('info');
-  const [name, setName] = useState('');
-  const [age, setAge] = useState('');
-  const [readResult, setReadResult] = useState(null);
-  const [txResult, setTxResult] = useState(null);
-  const [eventLogs, setEventLogs] = useState([]);
-  const [isListening, setIsListening] = useState(false);
-  const [balance, setBalance] = useState('0');
+  const [contractAddress, setContractAddress] = useState<string>('');
+  const [status, setStatus] = useState<string | null>(null);
+  const [statusType, setStatusType] = useState<'info' | 'success' | 'error' | 'warning'>('info');
+  const [name, setName] = useState<string>('');
+  const [age, setAge] = useState<string>('');
+  const [readResult, setReadResult] = useState<string | null>(null);
+  const [txResult, setTxResult] = useState<string | null>(null);
+  const [eventLogs, setEventLogs] = useState<any[]>([]);
+  const [isListening, setIsListening] = useState<boolean>(false);
+  const [balance, setBalance] = useState<string>('0');
 
   // Wagmi hooks
   const { address, isConnected } = useAccount();
@@ -91,8 +98,8 @@ const WagmiPage = () => {
           const balance = await provider.getBalance(address);
           setBalance(ethers.formatEther(balance));
         } catch (error) {
-          console.error('获取余额失败:', error);
-        }
+        console.error('获取余额失败:', error);
+      }
       }
     };
 
@@ -100,7 +107,7 @@ const WagmiPage = () => {
   }, [isConnected, address]);
 
   // 显示状态消息
-  const showStatus = (message, type = 'info') => {
+  const showStatus = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
     setStatus(message);
     setStatusType(type);
     setTimeout(() => {
@@ -122,7 +129,7 @@ const WagmiPage = () => {
       setReadResult(`<strong>sayHi() 返回:</strong><br>${result}`);
       showStatus('✅ 调用成功!', 'success');
     } catch (error) {
-      showStatus(`❌ 调用失败: ${error.message}`, 'error');
+      showStatus(`❌ 调用失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
   };
 
@@ -140,7 +147,7 @@ const WagmiPage = () => {
       setReadResult(`<strong>getInfo() 返回:</strong><br>姓名: ${result[0]}<br>年龄: ${result[1].toString()}`);
       showStatus('✅ 调用成功!', 'success');
     } catch (error) {
-      showStatus(`❌ 调用失败: ${error.message}`, 'error');
+      showStatus(`❌ 调用失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
   };
 
@@ -171,7 +178,7 @@ const WagmiPage = () => {
       setAge('');
       showStatus('✅ 交易成功!', 'success');
     } catch (error) {
-      showStatus(`❌ 交易失败: ${error.message}`, 'error');
+      showStatus(`❌ 交易失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
   };
 
@@ -204,7 +211,7 @@ const WagmiPage = () => {
         showStatus('🔔 收到新事件!', 'success');
       });
     } catch (error) {
-      showStatus(`❌ 监听事件失败: ${error.message}`, 'error');
+      showStatus(`❌ 监听事件失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
   };
 
@@ -220,7 +227,7 @@ const WagmiPage = () => {
       setIsListening(false);
       showStatus('⏹️ 已停止监听', 'info');
     } catch (error) {
-      showStatus(`❌ 停止监听失败: ${error.message}`, 'error');
+      showStatus(`❌ 停止监听失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
   };
 
@@ -291,7 +298,7 @@ const WagmiPage = () => {
               id="nameInput" 
               placeholder="请输入姓名" 
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
             />
           </div>
           <div className="form-group">
@@ -301,7 +308,7 @@ const WagmiPage = () => {
               id="ageInput" 
               placeholder="请输入年龄" 
               value={age}
-              onChange={(e) => setAge(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAge(e.target.value)}
             />
           </div>
           <button 

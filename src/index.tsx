@@ -12,9 +12,26 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const queryClient = new QueryClient();
 
 // 配置链
-const { chains, provider } = configureChains(
+const { chains, publicClient } = configureChains(
   [
-    { id: 5777, name: 'Ganache', network: 'ganache' },
+    {
+      id: 5777,
+      name: 'Ganache',
+      network: 'ganache',
+      nativeCurrency: {
+        name: 'Ether',
+        symbol: 'ETH',
+        decimals: 18,
+      },
+      rpcUrls: {
+        default: {
+          http: ['http://localhost:7545'],
+        },
+        public: {
+          http: ['http://localhost:7545'],
+        },
+      },
+    },
   ],
   [jsonRpcProvider({
     rpc: () => ({
@@ -29,10 +46,10 @@ const wagmiConfig = createConfig({
   connectors: [
     new InjectedConnector({ chains }),
   ],
-  provider,
+  publicClient,
 });
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+const root = ReactDOM.createRoot(document.getElementById('root')!);
 root.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>

@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 
+// 扩展Window接口，添加ethereum属性
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 // 合约ABI（从index3.html中提取）
 const contractABI = [
   {
@@ -35,22 +42,22 @@ const contractABI = [
 // 主组件
 const InfoContractApp = () => {
   // 状态
-  const [status, setStatus] = useState(null);
-  const [statusType, setStatusType] = useState('info');
-  const [name, setName] = useState('');
-  const [age, setAge] = useState('');
-  const [readResult, setReadResult] = useState(null);
-  const [txResult, setTxResult] = useState(null);
-  const [eventLogs, setEventLogs] = useState([]);
-  const [isListening, setIsListening] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [address, setAddress] = useState(null);
-  const [contract, setContract] = useState(null);
-  const [network, setNetwork] = useState(null);
-  const [balance, setBalance] = useState('0');
+  const [status, setStatus] = useState<string | null>(null);
+  const [statusType, setStatusType] = useState<'info' | 'success' | 'error' | 'warning'>('info');
+  const [name, setName] = useState<string>('');
+  const [age, setAge] = useState<string>('');
+  const [readResult, setReadResult] = useState<string | null>(null);
+  const [txResult, setTxResult] = useState<string | null>(null);
+  const [eventLogs, setEventLogs] = useState<any[]>([]);
+  const [isListening, setIsListening] = useState<boolean>(false);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [address, setAddress] = useState<string | null>(null);
+  const [contract, setContract] = useState<any>(null);
+  const [network, setNetwork] = useState<any>(null);
+  const [balance, setBalance] = useState<string>('0');
 
   // 显示状态消息
-  const showStatus = (message, type = 'info') => {
+  const showStatus = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
     setStatus(message);
     setStatusType(type);
     setTimeout(() => {
@@ -113,7 +120,7 @@ const InfoContractApp = () => {
       showStatus('✅ 合约已初始化', 'success');
     } catch (error) {
       console.error(error);
-      showStatus(`❌ 连接失败: ${error.message}`, 'error');
+      showStatus(`❌ 连接失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
   };
 
@@ -139,7 +146,7 @@ const InfoContractApp = () => {
       setReadResult(`<strong>sayHi() 返回:</strong><br>${result}`);
       showStatus('✅ 调用成功!', 'success');
     } catch (error) {
-      showStatus(`❌ 调用失败: ${error.message}`, 'error');
+      showStatus(`❌ 调用失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
   };
 
@@ -155,7 +162,7 @@ const InfoContractApp = () => {
       setReadResult(`<strong>getInfo() 返回:</strong><br>姓名: ${result[0]}<br>年龄: ${result[1].toString()}`);
       showStatus('✅ 调用成功!', 'success');
     } catch (error) {
-      showStatus(`❌ 调用失败: ${error.message}`, 'error');
+      showStatus(`❌ 调用失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
   };
 
@@ -182,7 +189,7 @@ const InfoContractApp = () => {
       setAge('');
       showStatus('✅ 交易成功!', 'success');
     } catch (error) {
-      showStatus(`❌ 交易失败: ${error.message}`, 'error');
+      showStatus(`❌ 交易失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
   };
 
@@ -198,7 +205,7 @@ const InfoContractApp = () => {
       showStatus('✅ 开始监听事件!', 'success');
       
       // 监听Instructor事件
-      contract.on('Instructor', (name, age, event) => {
+      contract.on('Instructor', (name: string, age: any, event: any) => {
         const timestamp = new Date().toLocaleString('zh-CN');
         const newLog = {
           name,
@@ -212,7 +219,7 @@ const InfoContractApp = () => {
         showStatus('🔔 收到新事件!', 'success');
       });
     } catch (error) {
-      showStatus(`❌ 监听事件失败: ${error.message}`, 'error');
+      showStatus(`❌ 监听事件失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
   };
 
@@ -226,7 +233,7 @@ const InfoContractApp = () => {
       setIsListening(false);
       showStatus('⏹️ 已停止监听', 'info');
     } catch (error) {
-      showStatus(`❌ 停止监听失败: ${error.message}`, 'error');
+      showStatus(`❌ 停止监听失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
     }
   };
 
@@ -250,7 +257,7 @@ const InfoContractApp = () => {
 
     if (window.ethereum) {
       // 监听账户变化
-      window.ethereum.on('accountsChanged', (accounts) => {
+      window.ethereum.on('accountsChanged', (accounts: string[]) => {
         if (accounts.length === 0) {
           handleDisconnectLocal();
         } else {
@@ -326,7 +333,7 @@ const InfoContractApp = () => {
               id="nameInput" 
               placeholder="请输入姓名" 
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
             />
           </div>
           <div className="form-group">
@@ -336,7 +343,7 @@ const InfoContractApp = () => {
               id="ageInput" 
               placeholder="请输入年龄" 
               value={age}
-              onChange={(e) => setAge(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAge(e.target.value)}
             />
           </div>
           <button 
