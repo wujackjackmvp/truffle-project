@@ -1,45 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect, useNetwork } from 'wagmi';
 import { InjectedConnector } from 'wagmi/connectors/injected';
-import { ethers } from 'ethers';
-
-// 扩展Window接口，添加ethereum属性
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
-
-// 合约ABI
-const contractABI = [
-  {
-    "inputs": [],
-    "name": "sayHi",
-    "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getInfo",
-    "outputs": [{ "internalType": "string", "name": "", "type": "string" }, { "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "string", "name": "_name", "type": "string" }, { "internalType": "uint256", "name": "_age", "type": "uint256" }],
-    "name": "setInfo",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "anonymous": false,
-    "inputs": [{ "indexed": false, "internalType": "string", "name": "name", "type": "string" }, { "indexed": false, "internalType": "uint256", "name": "age", "type": "uint256" }],
-    "name": "Instructor",
-    "type": "event"
-  }
-];
+import { InfoContractService } from '../dapp/InfoContractService';
 
 // 主组件
 const WagmiPage = () => {
@@ -54,6 +16,7 @@ const WagmiPage = () => {
   const [eventLogs, setEventLogs] = useState<any[]>([]);
   const [isListening, setIsListening] = useState<boolean>(false);
   const [balance, setBalance] = useState<string>('0');
+  const [contractService, setContractService] = useState<InfoContractService | null>(null);
 
   // Wagmi hooks
   const { address, isConnected } = useAccount();
@@ -63,48 +26,41 @@ const WagmiPage = () => {
   const { disconnect } = useDisconnect();
   const { chain } = useNetwork();
 
-  // 获取合约地址
+  // 获取合约地址并初始化合约服务
   useEffect(() => {
     const fetchContractAddress = async () => {
+      let address = '';
       try {
-        const contractData = await fetch('/web-test/build/InfoContract.json');
+        const contractData = await fetch('/web-test/build/InfoContract.json');  
         if (contractData.ok) {
           const data = await contractData.json();
-          const address = data.networks['5777']?.address || '';
+          address = data.networks['5777']?.address || '';
           if (address) {
-            setContractAddress(address);
             showStatus('✅ 合约地址加载成功!', 'success');
-          } else {
-            showStatus('⚠️  无法从ABI文件获取合约地址，使用默认地址', 'warning');
-            setContractAddress('0x3695403Ea61bd35c86186F457548bce8723Fd97f');
           }
         }
       } catch (error) {
         console.error('加载合约地址失败:', error);
-        showStatus('⚠️  加载合约地址失败，使用默认地址', 'warning');
-        setContractAddress('0x3695403Ea61bd35c86186F457548bce8723Fd97f');
       }
+
+      if (!address) {
+        showStatus('⚠️  使用默认合约地址', 'warning');
+        address = '0x3695403Ea61bd35c86186F457548bce8723Fd97f';
+      }
+
+      setContractAddress(address);
+      // 初始化合约服务
+      const service = new InfoContractService(address);
+      if (isConnected) {
+        await service.connectWallet();
+      } else {
+        await service.initializeContract();
+      }
+      setContractService(service);
     };
 
     fetchContractAddress();
-  }, []);
-
-  // 获取余额
-  useEffect(() => {
-    const fetchBalance = async () => {
-      if (isConnected && address) {
-        try {
-          const provider = new ethers.BrowserProvider(window.ethereum);
-          const balance = await provider.getBalance(address);
-          setBalance(ethers.formatEther(balance));
-        } catch (error) {
-        console.error('获取余额失败:', error);
-      }
-      }
-    };
-
-    fetchBalance();
-  }, [isConnected, address]);
+  }, [isConnected]);
 
   // 显示状态消息
   const showStatus = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
@@ -117,15 +73,13 @@ const WagmiPage = () => {
 
   // 调用sayHi
   const handleSayHi = async () => {
-    if (!contractAddress) {
-      showStatus('❌ 合约地址未初始化', 'error');
-      return;
-    }
-
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const contract = new ethers.Contract(contractAddress, contractABI, provider);
-      const result = await contract.sayHi();
+      if (!contractService) {
+        showStatus('❌ 合约服务未初始化', 'error');
+        return;
+      }
+
+      const result = await contractService.sayHi();
       setReadResult(`<strong>sayHi() 返回:</strong><br>${result}`);
       showStatus('✅ 调用成功!', 'success');
     } catch (error) {
@@ -135,15 +89,13 @@ const WagmiPage = () => {
 
   // 调用getInfo
   const handleGetInfo = async () => {
-    if (!contractAddress) {
-      showStatus('❌ 合约地址未初始化', 'error');
-      return;
-    }
-
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const contract = new ethers.Contract(contractAddress, contractABI, provider);
-      const result = await contract.getInfo();
+      if (!contractService) {
+        showStatus('❌ 合约服务未初始化', 'error');
+        return;
+      }
+
+      const result = await contractService.getInfo();
       setReadResult(`<strong>getInfo() 返回:</strong><br>姓名: ${result[0]}<br>年龄: ${result[1].toString()}`);
       showStatus('✅ 调用成功!', 'success');
     } catch (error) {
@@ -153,27 +105,27 @@ const WagmiPage = () => {
 
   // 调用setInfo
   const handleSetInfo = async () => {
-    if (!contractAddress) {
-      showStatus('❌ 合约地址未初始化', 'error');
-      return;
-    }
-
-    if (!name || !age) {
-      showStatus('❌ 请输入姓名和年龄!', 'error');
-      return;
-    }
-
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const contract = new ethers.Contract(contractAddress, contractABI, signer);
-      
-      const tx = await contract.setInfo(name, parseInt(age));
+      if (!contractService) {
+        showStatus('❌ 合约服务未初始化', 'error');
+        return;
+      }
+
+      if (!name || !age) {
+        showStatus('❌ 请输入姓名和年龄!', 'error');
+        return;
+      }
+
+      const tx = await contractService.setInfo(name, parseInt(age));
       setTxResult(`⏳ 交易已发送，等待确认...\n交易哈希: ${tx.hash}`);
-      
+
       const receipt = await tx.wait();
-      setTxResult(`✅ 交易成功!\n交易哈希: ${receipt.hash}`);
-      
+      if (receipt) {
+        setTxResult(`✅ 交易成功!\n交易哈希: ${receipt.hash}`);
+      } else {
+        setTxResult(`✅ 交易成功!\n交易哈希: ${tx.hash}`);
+      }
+
       setName('');
       setAge('');
       showStatus('✅ 交易成功!', 'success');
@@ -184,31 +136,28 @@ const WagmiPage = () => {
 
   // 开始监听事件
   const handleStartListen = () => {
-    if (!contractAddress) {
-      showStatus('❌ 合约地址未初始化', 'error');
-      return;
-    }
-
     try {
+      if (!contractService) {
+        showStatus('❌ 合约服务未初始化', 'error');
+        return;
+      }
+
       setIsListening(true);
       showStatus('✅ 开始监听事件!', 'success');
-      
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const contract = new ethers.Contract(contractAddress, contractABI, provider);
-      
+
       // 监听Instructor事件
-      contract.on('Instructor', (name, age, event) => {
+      contractService.listenForEvents((name: string, age: bigint) => {
         const timestamp = new Date().toLocaleString('zh-CN');
         const newLog = {
           name,
           age,
           timestamp,
-          blockNumber: event.blockNumber,
-          transactionHash: event.transactionHash
+          blockNumber: 0, // 事件回调中没有直接提供区块号
+          transactionHash: '' // 事件回调中没有直接提供交易哈希
         };
-        
+
         setEventLogs(prev => [newLog, ...prev]);
-        showStatus('🔔 收到新事件!', 'success');
+        showStatus('收到新事件!', 'success');
       });
     } catch (error) {
       showStatus(`❌ 监听事件失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
@@ -218,12 +167,10 @@ const WagmiPage = () => {
   // 停止监听事件
   const handleStopListen = () => {
     try {
-      if (contractAddress) {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const contract = new ethers.Contract(contractAddress, contractABI, provider);
-        contract.removeAllListeners('Instructor');
+      if (contractService) {
+        contractService.removeEventListeners();
       }
-      
+
       setIsListening(false);
       showStatus('⏹️ 已停止监听', 'info');
     } catch (error) {
@@ -234,12 +181,12 @@ const WagmiPage = () => {
   // 清空事件日志
   const handleClearEvents = () => {
     setEventLogs([]);
-    showStatus('🗑️ 已清空日志', 'info');
+    showStatus('���️ 已清空日志', 'info');
   };
 
   return (
     <div className="container">
-      <h1>📝 InfoContract 链上交互 (Wagmi)</h1>
+      <h1>InfoContract 链上交互 (Wagmi)</h1>
 
       {/* 状态显示 */}
       {status && (
@@ -250,7 +197,7 @@ const WagmiPage = () => {
 
       {/* 连接钱包 */}
       <div className="section">
-        <h2>🔗 连接钱包</h2>
+        <h2>连接钱包</h2>
         {!isConnected ? (
           <button id="connectBtn" onClick={() => connect()}>
             连接 MetaMask
@@ -272,7 +219,7 @@ const WagmiPage = () => {
       {/* 读取操作 */}
       {isConnected && (
         <div className="section">
-          <h2>📖 读取数据 (免费)</h2>
+          <h2>读取数据 (免费)</h2>
           <button id="sayHiBtn" style={{ marginBottom: '10px' }} onClick={handleSayHi}>
             调用 sayHi()
           </button>
@@ -293,26 +240,26 @@ const WagmiPage = () => {
           <h2>✍️ 写入数据 (需要 Gas)</h2>
           <div className="form-group">
             <label htmlFor="nameInput">姓名:</label>
-            <input 
-              type="text" 
-              id="nameInput" 
-              placeholder="请输入姓名" 
+            <input
+              type="text"
+              id="nameInput"
+              placeholder="请输入姓名"
               value={name}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
             />
           </div>
           <div className="form-group">
             <label htmlFor="ageInput">年龄:</label>
-            <input 
-              type="number" 
-              id="ageInput" 
-              placeholder="请输入年龄" 
+            <input
+              type="number"
+              id="ageInput"
+              placeholder="请输入年龄"
               value={age}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAge(e.target.value)}
             />
           </div>
-          <button 
-            id="setInfoBtn" 
+          <button
+            id="setInfoBtn"
             onClick={handleSetInfo}
           >
             调用 setInfo()
@@ -328,26 +275,26 @@ const WagmiPage = () => {
       {/* 事件监听 */}
       {isConnected && (
         <div className="section">
-          <h2>📡 事件监听</h2>
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-            <button 
-              id="startListenBtn" 
+          <h2>事件监听</h2>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>  
+            <button
+              id="startListenBtn"
               style={{ flex: 1 }}
               onClick={handleStartListen}
               disabled={isListening}
             >
               开始监听
             </button>
-            <button 
-              id="stopListenBtn" 
+            <button
+              id="stopListenBtn"
               style={{ flex: 1, background: '#dc3545' }}
               onClick={handleStopListen}
               disabled={!isListening}
             >
               停止监听
             </button>
-            <button 
-              id="clearEventsBtn" 
+            <button
+              id="clearEventsBtn"
               style={{ flex: 1, background: '#6c757d' }}
               onClick={handleClearEvents}
             >
@@ -356,9 +303,9 @@ const WagmiPage = () => {
           </div>
           <div id="eventStatus" className="info-box" style={{ background: '#e9ecef' }}>
             <p>
-              <strong>监听状态:</strong> 
+              <strong>监听状态:</strong>
               <span id="listenStatus" className={isListening ? 'listening' : ''}>
-                {isListening ? '🟢 监听中...' : '🔴 已停止'}
+                {isListening ? '监听中...' : '已停止'}
               </span>
             </p>
             <p><strong>接收事件数:</strong> <span id="eventCount">{eventLogs.length}</span></p>
@@ -370,20 +317,14 @@ const WagmiPage = () => {
             {eventLogs.map((log, index) => (
               <div key={index} className="event-item">
                 <div className="event-header">
-                  <span>🔔 Instructor 事件</span>
+                  <span>Instructor 事件</span>
                   <span className="event-time">{log.timestamp}</span>
                 </div>
                 <div className="event-data">
-                  👤 姓名: {log.name}
+                  姓名: {log.name}
                 </div>
                 <div className="event-data">
-                  🎂 年龄: {log.age.toString()}
-                </div>
-                <div className="event-block">
-                  📦 区块号: {log.blockNumber}
-                </div>
-                <div className="event-block">
-                  🔗 交易哈希: {log.transactionHash}
+                  年龄: {log.age.toString()}
                 </div>
               </div>
             ))}

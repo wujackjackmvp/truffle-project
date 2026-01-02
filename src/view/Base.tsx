@@ -1,43 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
-
-// 扩展Window接口，添加ethereum属性
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
-
-// 合约ABI（从index3.html中提取）
-const contractABI = [
-  {
-    "inputs": [],
-    "name": "sayHi",
-    "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getInfo",
-    "outputs": [{ "internalType": "string", "name": "", "type": "string" }, { "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "string", "name": "_name", "type": "string" }, { "internalType": "uint256", "name": "_age", "type": "uint256" }],
-    "name": "setInfo",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "anonymous": false,
-    "inputs": [{ "indexed": false, "internalType": "string", "name": "name", "type": "string" }, { "indexed": false, "internalType": "uint256", "name": "age", "type": "uint256" }],
-    "name": "Instructor",
-    "type": "event"
-  }
-];
+import { InfoContractService } from '../dapp/InfoContractService';
 
 // 主组件
 const InfoContractApp = () => {
@@ -52,9 +14,6 @@ const InfoContractApp = () => {
   const [isListening, setIsListening] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [address, setAddress] = useState<string | null>(null);
-  const [contract, setContract] = useState<any>(null);
-  const [network, setNetwork] = useState<any>(null);
-  const [balance, setBalance] = useState<string>('0');
 
   // 显示状态消息
   const showStatus = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
@@ -68,56 +27,23 @@ const InfoContractApp = () => {
   // 连接钱包
   const handleConnect = async () => {
     try {
-      if (typeof window.ethereum === 'undefined') {
-        showStatus('❌ 请先安装 MetaMask!', 'error');
-        return;
+      // 设置合约地址
+      const contractAddress = '0x3695403Ea61bd35c86186F457548bce8723Fd97f';
+      
+      // 创建新的合约服务实例
+      const service = new InfoContractService(contractAddress);
+      
+      // 连接钱包
+      const connectedAddress = await service.connectWallet();
+      if (connectedAddress) {
+        // 更新全局实例的地址
+        (window as any).infoContractService = service;
+        
+        setAddress(connectedAddress);
+        setIsConnected(true);
+        showStatus('✅ 钱包连接成功!', 'success');
+        showStatus('✅ 合约已初始化', 'success');
       }
-
-      // 请求账户访问
-      const accounts = await window.ethereum.request({
-        method: 'eth_requestAccounts',
-      });
-
-      const address = accounts[0];
-      setAddress(address);
-      setIsConnected(true);
-
-      // 创建 provider 和 signer
-      const web3Provider = new ethers.BrowserProvider(window.ethereum);
-      const signerInstance = await web3Provider.getSigner();
-      
-      // 获取网络信息
-      const networkInfo = await web3Provider.getNetwork();
-      // 获取余额
-      const balance = await web3Provider.getBalance(address);
-      
-      // 获取合约地址
-      let contractAddress = '';
-      try {
-        // 尝试从本地JSON文件获取合约地址
-        const contractData = await fetch('/web-test/build/InfoContract.json');
-        if (contractData.ok) {
-          const data = await contractData.json();
-          contractAddress = data.networks['5777']?.address || '';
-        }
-      } catch (error) {
-        console.error('加载合约地址失败:', error);
-      }
-      
-      // 如果没有从JSON文件获取到地址，使用默认地址
-      if (!contractAddress) {
-        contractAddress = '0x3695403Ea61bd35c86186F457548bce8723Fd97f'; // 从JSON文件中获取的地址
-      }
-      
-      // 初始化合约
-      const contractInstance = new ethers.Contract(contractAddress, contractABI, signerInstance);
-      
-      setContract(contractInstance);
-      setNetwork(networkInfo);
-      setBalance(ethers.formatEther(balance));
-      
-      showStatus('✅ 钱包连接成功!', 'success');
-      showStatus('✅ 合约已初始化', 'success');
     } catch (error) {
       console.error(error);
       showStatus(`❌ 连接失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
@@ -126,23 +52,27 @@ const InfoContractApp = () => {
 
   // 断开连接
   const handleDisconnect = () => {
+    // 移除事件监听
+    if ((window as any).infoContractService) {
+      (window as any).infoContractService.removeEventListeners();
+    }
+    
     setIsConnected(false);
     setAddress(null);
-    setContract(null);
-    setNetwork(null);
-    setBalance('0');
+    setIsListening(false);
     showStatus('❌ 钱包已断开连接', 'error');
   };
 
   // 调用sayHi
   const handleSayHi = async () => {
     try {
-      if (!contract) {
-        showStatus('❌ 合约未初始化', 'error');
+      const service = (window as any).infoContractService;
+      if (!service) {
+        showStatus('❌ 合约服务未初始化', 'error');
         return;
       }
-      
-      const result = await contract.sayHi();
+
+      const result = await service.sayHi();
       setReadResult(`<strong>sayHi() 返回:</strong><br>${result}`);
       showStatus('✅ 调用成功!', 'success');
     } catch (error) {
@@ -153,12 +83,13 @@ const InfoContractApp = () => {
   // 调用getInfo
   const handleGetInfo = async () => {
     try {
-      if (!contract) {
-        showStatus('❌ 合约未初始化', 'error');
+      const service = (window as any).infoContractService;
+      if (!service) {
+        showStatus('❌ 合约服务未初始化', 'error');
         return;
       }
-      
-      const result = await contract.getInfo();
+
+      const result = await service.getInfo();
       setReadResult(`<strong>getInfo() 返回:</strong><br>姓名: ${result[0]}<br>年龄: ${result[1].toString()}`);
       showStatus('✅ 调用成功!', 'success');
     } catch (error) {
@@ -169,22 +100,27 @@ const InfoContractApp = () => {
   // 调用setInfo
   const handleSetInfo = async () => {
     try {
-      if (!contract) {
-        showStatus('❌ 合约未初始化', 'error');
+      const service = (window as any).infoContractService;
+      if (!service) {
+        showStatus('❌ 合约服务未初始化', 'error');
         return;
       }
-      
+
       if (!name || !age) {
         showStatus('❌ 请输入姓名和年龄!', 'error');
         return;
       }
-      
-      const tx = await contract.setInfo(name, parseInt(age));
+
+      const tx = await service.setInfo(name, parseInt(age));
       setTxResult(`⏳ 交易已发送，等待确认...\n交易哈希: ${tx.hash}`);
-      
+
       const receipt = await tx.wait();
-      setTxResult(`✅ 交易成功!\n交易哈希: ${receipt.hash}`);
-      
+      if (receipt) {
+        setTxResult(`✅ 交易成功!\n交易哈希: ${receipt.hash}`);
+      } else {
+        setTxResult(`✅ 交易成功!\n交易哈希: ${tx.hash}`);
+      }
+
       setName('');
       setAge('');
       showStatus('✅ 交易成功!', 'success');
@@ -196,27 +132,28 @@ const InfoContractApp = () => {
   // 开始监听事件
   const handleStartListen = () => {
     try {
-      if (!contract) {
-        showStatus('❌ 合约未初始化', 'error');
+      const service = (window as any).infoContractService;
+      if (!service) {
+        showStatus('❌ 合约服务未初始化', 'error');
         return;
       }
-      
+
       setIsListening(true);
       showStatus('✅ 开始监听事件!', 'success');
-      
+
       // 监听Instructor事件
-      contract.on('Instructor', (name: string, age: any, event: any) => {
+      service.listenForEvents((name: string, age: bigint) => {
         const timestamp = new Date().toLocaleString('zh-CN');
         const newLog = {
           name,
           age,
           timestamp,
-          blockNumber: event.blockNumber,
-          transactionHash: event.transactionHash
+          blockNumber: 0, // 事件回调中没有直接提供区块号
+          transactionHash: '' // 事件回调中没有直接提供交易哈希
         };
-        
+
         setEventLogs(prev => [newLog, ...prev]);
-        showStatus('🔔 收到新事件!', 'success');
+        showStatus('收到新事件!', 'success');
       });
     } catch (error) {
       showStatus(`❌ 监听事件失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
@@ -226,10 +163,11 @@ const InfoContractApp = () => {
   // 停止监听事件
   const handleStopListen = () => {
     try {
-      if (contract) {
-        contract.removeAllListeners('Instructor');
+      const service = (window as any).infoContractService;
+      if (service) {
+        service.removeEventListeners();
       }
-      
+
       setIsListening(false);
       showStatus('⏹️ 已停止监听', 'info');
     } catch (error) {
@@ -240,7 +178,7 @@ const InfoContractApp = () => {
   // 清空事件日志
   const handleClearEvents = () => {
     setEventLogs([]);
-    showStatus('🗑️ 已清空日志', 'info');
+    showStatus('���️ 已清空日志', 'info');
   };
 
   // 监听MetaMask事件
@@ -249,13 +187,11 @@ const InfoContractApp = () => {
     const handleDisconnectLocal = () => {
       setIsConnected(false);
       setAddress(null);
-      setContract(null);
-      setNetwork(null);
-      setBalance('0');
+      setIsListening(false);
       showStatus('❌ 钱包已断开连接', 'error');
     };
 
-    if (window.ethereum) {
+    if (typeof window.ethereum !== 'undefined') {
       // 监听账户变化
       window.ethereum.on('accountsChanged', (accounts: string[]) => {
         if (accounts.length === 0) {
@@ -274,7 +210,7 @@ const InfoContractApp = () => {
 
   return (
     <div className="container">
-      <h1>📝 InfoContract 链上交互</h1>
+      <h1>InfoContract 链上交互</h1>
 
       {/* 状态显示 */}
       {status && (
@@ -285,7 +221,7 @@ const InfoContractApp = () => {
 
       {/* 连接钱包 */}
       <div className="section">
-        <h2>🔗 连接钱包</h2>
+        <h2>连接钱包</h2>
         {!isConnected ? (
           <button id="connectBtn" onClick={() => handleConnect()}>
             连接 MetaMask
@@ -294,8 +230,6 @@ const InfoContractApp = () => {
           <>
             <div id="accountInfo" className="info-box">
               <p><strong>账户地址:</strong> {address}</p>
-              <p><strong>当前网络:</strong> {network?.name || '未知网络'} (Chain ID: {network?.chainId || '未知'})</p>
-              <p><strong>余额:</strong> {balance} ETH</p>
             </div>
             <button id="disconnectBtn" onClick={() => handleDisconnect()} style={{ marginTop: '10px', background: '#dc3545' }}>
               断开连接
@@ -307,7 +241,7 @@ const InfoContractApp = () => {
       {/* 读取操作 */}
       {isConnected && (
         <div className="section">
-          <h2>📖 读取数据 (免费)</h2>
+          <h2>读取数据 (免费)</h2>
           <button id="sayHiBtn" style={{ marginBottom: '10px' }} onClick={handleSayHi}>
             调用 sayHi()
           </button>
@@ -328,26 +262,26 @@ const InfoContractApp = () => {
           <h2>✍️ 写入数据 (需要 Gas)</h2>
           <div className="form-group">
             <label htmlFor="nameInput">姓名:</label>
-            <input 
-              type="text" 
-              id="nameInput" 
-              placeholder="请输入姓名" 
+            <input
+              type="text"
+              id="nameInput"
+              placeholder="请输入姓名"
               value={name}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
             />
           </div>
           <div className="form-group">
             <label htmlFor="ageInput">年龄:</label>
-            <input 
-              type="number" 
-              id="ageInput" 
-              placeholder="请输入年龄" 
+            <input
+              type="number"
+              id="ageInput"
+              placeholder="请输入年龄"
               value={age}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAge(e.target.value)}
             />
           </div>
-          <button 
-            id="setInfoBtn" 
+          <button
+            id="setInfoBtn"
             onClick={handleSetInfo}
           >
             调用 setInfo()
@@ -363,26 +297,26 @@ const InfoContractApp = () => {
       {/* 事件监听 */}
       {isConnected && (
         <div className="section">
-          <h2>📡 事件监听</h2>
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-            <button 
-              id="startListenBtn" 
+          <h2>事件监听</h2>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>  
+            <button
+              id="startListenBtn"
               style={{ flex: 1 }}
               onClick={handleStartListen}
               disabled={isListening}
             >
               开始监听
             </button>
-            <button 
-              id="stopListenBtn" 
+            <button
+              id="stopListenBtn"
               style={{ flex: 1, background: '#dc3545' }}
               onClick={handleStopListen}
               disabled={!isListening}
             >
               停止监听
             </button>
-            <button 
-              id="clearEventsBtn" 
+            <button
+              id="clearEventsBtn"
               style={{ flex: 1, background: '#6c757d' }}
               onClick={handleClearEvents}
             >
@@ -391,9 +325,9 @@ const InfoContractApp = () => {
           </div>
           <div id="eventStatus" className="info-box" style={{ background: '#e9ecef' }}>
             <p>
-              <strong>监听状态:</strong> 
+              <strong>监听状态:</strong>
               <span id="listenStatus" className={isListening ? 'listening' : ''}>
-                {isListening ? '🟢 监听中...' : '🔴 已停止'}
+                {isListening ? '监听中...' : '已停止'}
               </span>
             </p>
             <p><strong>接收事件数:</strong> <span id="eventCount">{eventLogs.length}</span></p>
@@ -405,20 +339,14 @@ const InfoContractApp = () => {
             {eventLogs.map((log, index) => (
               <div key={index} className="event-item">
                 <div className="event-header">
-                  <span>🔔 Instructor 事件</span>
+                  <span>Instructor 事件</span>
                   <span className="event-time">{log.timestamp}</span>
                 </div>
                 <div className="event-data">
-                  👤 姓名: {log.name}
+                  姓名: {log.name}
                 </div>
                 <div className="event-data">
-                  🎂 年龄: {log.age.toString()}
-                </div>
-                <div className="event-block">
-                  📦 区块号: {log.blockNumber}
-                </div>
-                <div className="event-block">
-                  🔗 交易哈希: {log.transactionHash}
+                  年龄: {log.age.toString()}
                 </div>
               </div>
             ))}

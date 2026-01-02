@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "truffle/console.sol";
 contract LeepCoin {
-    using SafeMath for uint256; // 新增加减乘除
-
     // 代币基本信息
     string public name = "LeepCoin";
     string public symbol = "LEEP";
@@ -22,9 +19,9 @@ contract LeepCoin {
 
     // 构造函数，初始化代币总量并分配给合约创建者
     constructor(uint256 initialSupply) {
-        totalSupply = initialSupply * 10 ** uint256(decimals);
+        totalSupply = initialSupply * 10 ** uint256(decimals);    
         balanceOf[msg.sender] = totalSupply;
-        emit Transfer(address(0), msg.sender, totalSupply);
+        emit Transfer(address(0), msg.sender, totalSupply);       
     }
 
     // 转账公共函数
@@ -33,7 +30,7 @@ contract LeepCoin {
         require(to != address(0), "Cannot transfer to zero address");
         balanceOf[from] -= value;
         balanceOf[to] += value;
-        emit Transfer(from, to, value);    
+        emit Transfer(from, to, value);
     }
 
     // 转账函数
@@ -47,17 +44,12 @@ contract LeepCoin {
     function approve(address spender, uint256 value) public returns (bool success) {
         require(spender != address(0), "Cannot approve to zero address");
         allowance[msg.sender][spender] = value;
-        console.log('allowance[msg.sender][spender]:', allowance[msg.sender][spender]);
         emit Approval(msg.sender, spender, value);
         return true;
     }
 
     // 授权转账函数
-    // msg.sender:L, user1, E, 100
     function transferFrom(address from, address to, uint256 value) public returns (bool success) {
-        // from 某一个放款账户地址
-        // to 收款账户
-        // msg.sender 交易所
         require(balanceOf[from] >= value, "Insufficient balance");
         require(allowance[from][msg.sender] >= value, "Insufficient allowance");
 
