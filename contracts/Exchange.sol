@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
-import "truffle/console.sol";
 import "./LeepCoin.sol";
 contract Exchange {
     // 收费账户地址
