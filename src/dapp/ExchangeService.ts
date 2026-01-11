@@ -135,6 +135,17 @@ export class ExchangeService {
     return await this.contract.balanceOf(user, token);
   }
 
+  // 获取合约总ETH余额
+  async getContractBalance(): Promise<bigint> {
+    if (!this.provider) {
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('请先安装 MetaMask!');
+      }
+      this.provider = new ethers.BrowserProvider(window.ethereum);
+    }
+    return await this.provider.getBalance(this.contractAddress);
+  }
+
   // 创建订单
   async makeOrder(tokenGet: string, amountGet: bigint, tokenGive: string, amountGive: bigint): Promise<ethers.ContractTransactionResponse> {
     if (!this.contract || !this.signer) {

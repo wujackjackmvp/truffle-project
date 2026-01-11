@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect, useNetwork } from 'wagmi';
 import { InjectedConnector } from 'wagmi/connectors/injected';
 import { ethers } from 'ethers';
-import { LeepCoinService, leepCoinService } from '../dapp/LeepCoinService';
-import { ExchangeService, exchangeService } from '../dapp/ExchangeService';
+import { LeepCoinService } from '../dapp/LeepCoinService';
+import { ExchangeService } from '../dapp/ExchangeService';
 
 // 主组件
 const TokenBank = () => {
@@ -25,6 +25,8 @@ const TokenBank = () => {
   const [leepCoinBalance, setLeepCoinBalance] = useState<string>('0');
   const [exchangeEthBalance, setExchangeEthBalance] = useState<string>('0');
   const [exchangeLeepCoinBalance, setExchangeLeepCoinBalance] = useState<string>('0');
+  // Exchange合约总ETH余额
+  const [contractEthBalance, setContractEthBalance] = useState<string>('0');
   
   // 造币表单
   const [mintAddress, setMintAddress] = useState<string>('');
@@ -61,11 +63,6 @@ const TokenBank = () => {
     setTimeout(() => {
       setStatus(null);
     }, 5000);
-  };
-  
-  // 转换为wei
-  const toWei = (amount: string) => {
-    return ethers.parseEther(amount);
   };
   
   // 从wei转换
@@ -151,38 +148,59 @@ const TokenBank = () => {
     checkOwner();
   }, [isConnected, address, leepCoinServiceInstance]);
   
-  // 更新余额
-  useEffect(() => {
-    const updateBalances = async () => {
-      if (isConnected && address && leepCoinServiceInstance && exchangeServiceInstance) {
-        try {
-          // 获取账户ETH余额
-          if (window.ethereum) {
-            const provider = new ethers.BrowserProvider(window.ethereum);
-            const balance = await provider.getBalance(address);
-            setEthBalance(fromWei(balance));
-          }
-          
-          // 获取LeepCoin余额
-          const leepBalance = await leepCoinServiceInstance.getBalanceOf(address);
-          setLeepCoinBalance(fromWei(leepBalance));
-          
-          // 获取交易所ETH余额
-          const ethAddr = '0x0000000000000000000000000000000000000000';
-          const exchangeEth = await exchangeServiceInstance.getTokens(address, ethAddr);
-          setExchangeEthBalance(fromWei(exchangeEth));
-          
-          // 获取交易所LeepCoin余额
-          const exchangeLeep = await exchangeServiceInstance.getTokens(address, leepCoinAddress);
-          setExchangeLeepCoinBalance(fromWei(exchangeLeep));
-        } catch (error) {
-          console.error('更新余额失败:', error);
-        }
+  // 更新合约余额
+  const updateContractBalance = async () => {
+    if (exchangeServiceInstance) {
+      try {
+        const balance = await exchangeServiceInstance.getContractBalance();
+        setContractEthBalance(fromWei(balance));
+      } catch (error) {
+        console.error('更新合约余额失败:', error);
       }
-    };
-    
-    updateBalances();
-  }, [isConnected, address, leepCoinServiceInstance, exchangeServiceInstance, leepCoinAddress]);
+    }
+  };
+
+  // 更新所有余额（包括用户余额和合约余额）
+  const updateAllBalances = async () => {
+    if (isConnected && address && leepCoinServiceInstance && exchangeServiceInstance) {
+      try {
+        // 获取账户ETH余额
+        if (window.ethereum) {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const balance = await provider.getBalance(address);
+          setEthBalance(fromWei(balance));
+        }
+        
+        // 获取LeepCoin余额
+        const leepBalance = await leepCoinServiceInstance.getBalanceOf(address);
+        setLeepCoinBalance(fromWei(leepBalance));
+        
+        // 获取交易所ETH余额
+        const ethAddr = '0x0000000000000000000000000000000000000000';
+        const exchangeEth = await exchangeServiceInstance.getTokens(address, ethAddr);
+        setExchangeEthBalance(fromWei(exchangeEth));
+        
+        // 获取交易所LeepCoin余额
+        const exchangeLeep = await exchangeServiceInstance.getTokens(address, leepCoinAddress);
+        setExchangeLeepCoinBalance(fromWei(exchangeLeep));
+        
+        // 获取合约总ETH余额
+        await updateContractBalance();
+      } catch (error) {
+        console.error('更新余额失败:', error);
+      }
+    }
+  };
+
+  // 组件挂载和连接状态变化时更新余额
+  useEffect(() => {
+    updateAllBalances();
+  }, [isConnected, address, leepCoinServiceInstance, exchangeServiceInstance, leepCoinAddress, updateAllBalances]);
+
+  // 合约地址变化时更新合约余额
+  useEffect(() => {
+    updateContractBalance();
+  }, [exchangeAddress, exchangeServiceInstance, updateContractBalance]);
   
   // 显示状态消息
   const handleStatus = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
@@ -216,6 +234,8 @@ const TokenBank = () => {
         // 重置表单
         setMintAddress('');
         setMintAmount('');
+        // 更新所有余额
+        await updateAllBalances();
       }
     } catch (error) {
       showStatus(`❌ 造币失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
@@ -262,6 +282,8 @@ const TokenBank = () => {
         showStatus(`✅ 存款成功!\n交易哈希: ${receipt.hash}`, 'success');
         // 重置表单
         setDepositAmount('');
+        // 更新所有余额
+        await updateAllBalances();
       }
     } catch (error) {
       showStatus(`❌ 存款失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
@@ -301,6 +323,8 @@ const TokenBank = () => {
         showStatus(`✅ 取款成功!\n交易哈希: ${receipt.hash}`, 'success');
         // 重置表单
         setWithdrawAmount('');
+        // 更新所有余额
+        await updateAllBalances();
       }
     } catch (error) {
       showStatus(`❌ 取款失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
@@ -334,6 +358,8 @@ const TokenBank = () => {
         // 重置表单
         setTransferTo('');
         setTransferAmount('');
+        // 更新所有余额
+        await updateAllBalances();
       }
     } catch (error) {
       showStatus(`❌ 转账失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
@@ -367,6 +393,8 @@ const TokenBank = () => {
         // 重置表单
         setApproveSpender('');
         setApproveAmount('');
+        // 更新所有余额
+        await updateAllBalances();
       }
     } catch (error) {
       showStatus(`❌ 授权失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
@@ -402,6 +430,8 @@ const TokenBank = () => {
         setTransferFrom('');
         setTransferTo('');
         setTransferAmount('');
+        // 更新所有余额
+        await updateAllBalances();
       }
     } catch (error) {
       showStatus(`❌ 授权转账失败: ${error instanceof Error ? error.message : String(error)}`, 'error');
@@ -435,6 +465,7 @@ const TokenBank = () => {
               <p><strong>LEEP 余额:</strong> {leepCoinBalance} LEEP</p>
               <p><strong>交易所 ETH 余额:</strong> {exchangeEthBalance} ETH</p>
               <p><strong>交易所 LEEP 余额:</strong> {exchangeLeepCoinBalance} LEEP</p>
+              <p><strong>Exchange 合约总 ETH 余额:</strong> {contractEthBalance} ETH</p>
               <p><strong>是否为合约所有者:</strong> {isOwner ? '是' : '否'}</p>
             </div>
             <button id="disconnectBtn" onClick={() => disconnect()} style={{ marginTop: '10px', background: '#dc3545' }}>

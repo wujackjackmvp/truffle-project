@@ -27,7 +27,7 @@ contract Exchange {
     event Cancel(uint256 id, address user, address tokenGet, uint256 amountGet, address tokenGive, uint256 amountGive, uint256 timestamp);
     event Trade(uint256 id, address user, address tokenGet, uint256 amountGet, address tokenGive, uint256 amountGive, address userFill, uint256 timestamp);
     
-    mapping(address => mapping(address => uint256)) public tokens;    
+    mapping(address => mapping(address => uint256)) public tokens; 
     
     constructor (address _feeAccount, uint256 _feePercent) {
         feeAccount = _feeAccount;
