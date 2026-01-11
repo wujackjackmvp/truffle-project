@@ -181,7 +181,7 @@ const WagmiPage = () => {
   // 清空事件日志
   const handleClearEvents = () => {
     setEventLogs([]);
-    showStatus('���️ 已清空日志', 'info');
+    showStatus('已清空日志', 'info');
   };
 
   return (

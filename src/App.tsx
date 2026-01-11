@@ -3,7 +3,8 @@ import './App.css';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import BaseComponent from './view/Base';
 import WagmiPage from './view/WagmiPage';
-import WhyDidYouRenderExample from './view/whyDidYouRender';
+import TokenBank from './view/TokenBank';
+// import WhyDidYouRenderExample from './view/whyDidYouRender';
 
 function App() {
   return (
@@ -13,14 +14,16 @@ function App() {
         <nav className="nav">
           <Link to="/" className="nav-link">Ethers版本</Link>
           <Link to="/wagmi" className="nav-link">Wagmi版本</Link>
-          <Link to="/wdyr" className="nav-link">WDYR教学</Link>
+          <Link to="/tokenBank" className="nav-link">tokenBank教学</Link>
+          {/* <Link to="/wdyr" className="nav-link">wdyr</Link> */}
         </nav>
 
         {/* 路由配置 */}
         <Routes>
           <Route path="/" element={<BaseComponent />} />
           <Route path="/wagmi" element={<WagmiPage />} />
-          <Route path="/wdyr" element={<WhyDidYouRenderExample />} />
+          <Route path="/tokenBank" element={<TokenBank />} />
+          {/* <Route path="/wdyr" element={<WhyDidYouRenderExample />} /> */}
         </Routes>
       </div>
     </Router>

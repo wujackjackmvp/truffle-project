@@ -170,4 +170,71 @@ contract("LeepCoin", (accounts) => {
       assert.include(error.message, "Cannot transfer to zero address", "错误信息应该包含'不能转账到零地址'");
     }
   });
+
+  // 测试造币功能：只有所有者可以造币
+  it("应该允许所有者造币", async () => {
+    const mintAmount = 1000; // 1000个代币
+    const initialTotalSupply = await leepCoinInstance.totalSupply();
+    
+    // 所有者执行造币
+    await leepCoinInstance.mint(receiver, mintAmount, { from: owner });
+    
+    // 验证总供应量增加
+    const newTotalSupply = await leepCoinInstance.totalSupply();
+    const expectedTotalSupply = web3.utils.toBN(initialTotalSupply).add(web3.utils.toBN(toWei(mintAmount)));
+    assert.equal(newTotalSupply.toString(), expectedTotalSupply.toString(), "总供应量应该增加相应金额");
+    
+    // 验证接收者余额增加
+    const receiverBalance = await leepCoinInstance.balanceOf(receiver);
+    assert.equal(receiverBalance.toString(), toWei(mintAmount), "接收者余额应该增加相应金额");
+  });
+
+  // 测试非所有者不能造币
+  it("不应该允许非所有者造币", async () => {
+    const mintAmount = 1000;
+    
+    try {
+      // 非所有者尝试造币
+      await leepCoinInstance.mint(receiver, mintAmount, { from: receiver });
+      assert.fail("应该抛出错误");
+    } catch (error) {
+      assert.include(error.message, "Caller is not the owner", "错误信息应该包含'调用者不是所有者'");
+    }
+  });
+
+  // 测试不能向零地址造币
+  it("应该拒绝向零地址造币", async () => {
+    const mintAmount = 1000;
+    
+    try {
+      // 尝试向零地址造币
+      await leepCoinInstance.mint("0x0000000000000000000000000000000000000000", mintAmount, { from: owner });
+      assert.fail("应该抛出错误");
+    } catch (error) {
+      assert.include(error.message, "Cannot mint to zero address", "错误信息应该包含'不能向零地址造币'");
+    }
+  });
+
+  // 测试多次造币功能
+  it("应该支持多次造币", async () => {
+    const firstMintAmount = 1000;
+    const secondMintAmount = 2000;
+    const totalMintAmount = firstMintAmount + secondMintAmount;
+    
+    // 第一次造币
+    await leepCoinInstance.mint(receiver, firstMintAmount, { from: owner });
+    
+    // 第二次造币
+    await leepCoinInstance.mint(receiver, secondMintAmount, { from: owner });
+    
+    // 验证总供应量增加
+    const initialTotalSupply = web3.utils.toBN(toWei(initialSupply));
+    const newTotalSupply = await leepCoinInstance.totalSupply();
+    const expectedTotalSupply = initialTotalSupply.add(web3.utils.toBN(toWei(totalMintAmount)));
+    assert.equal(newTotalSupply.toString(), expectedTotalSupply.toString(), "总供应量应该增加两次造币金额之和");
+    
+    // 验证接收者余额增加
+    const receiverBalance = await leepCoinInstance.balanceOf(receiver);
+    assert.equal(receiverBalance.toString(), toWei(totalMintAmount), "接收者余额应该增加两次造币金额之和");
+  });
 });

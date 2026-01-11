@@ -61,6 +61,7 @@ const _abi = [
     ],
     stateMutability: "pure",
     type: "function",
+    constant: true,
   },
   {
     inputs: [],
@@ -79,6 +80,7 @@ const _abi = [
     ],
     stateMutability: "view",
     type: "function",
+    constant: true,
   },
 ] as const;
 
