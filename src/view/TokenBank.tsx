@@ -79,13 +79,16 @@ const TokenBank = () => {
         let exchangeAddr = '';
         
         try {
-          const leepCoinData = await fetch('/web-test/build/LeepCoin.json');
+          const leepCoinData = await fetch('/src/abi/LeepCoin.json');
+          console.log('leepCoinData', leepCoinData);
           if (leepCoinData.ok) {
             const data = await leepCoinData.json();
             leepCoinAddr = data.networks['5777']?.address || '';
           }
           
-          const exchangeData = await fetch('/web-test/build/Exchange.json');
+          const exchangeData = await fetch('/src/abi/Exchange.json');
+          console.log('exchangeData', exchangeData);
+
           if (exchangeData.ok) {
             const data = await exchangeData.json();
             exchangeAddr = data.networks['5777']?.address || '';
