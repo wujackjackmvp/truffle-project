@@ -77,7 +77,7 @@ const TokenBank = () => {
         // 尝试从构建文件加载合约地址
         let leepCoinAddr = '';
         let exchangeAddr = '';
-        
+        console.log('连接|断开')
         try {
           const leepCoinData = await fetch('/src/abi/LeepCoin.json');
           console.log('leepCoinData', leepCoinData);
@@ -107,7 +107,8 @@ const TokenBank = () => {
           exchangeAddr = '0x9D5A4CF228065b0e4a1b93686e8204Af8496B578';
           showStatus('⚠️  使用默认Exchange合约地址', 'warning');
         }
-        
+        console.log('exchangeAddr', exchangeAddr);
+        console.log('leepCoinAddr', leepCoinAddr);
         setLeepCoinAddress(leepCoinAddr);
         setExchangeAddress(exchangeAddr);
         
@@ -264,6 +265,8 @@ const TokenBank = () => {
         // 存入以太币
         tx = await exchangeServiceInstance.depositEther(ethers.parseEther(depositAmount));
       } else {
+        // Exchange合约地址
+        console.log('exchangeAddress', exchangeAddress)
         // 存入代币，需要先授权
         const approveTx = await leepCoinServiceInstance.approve(
           exchangeAddress,
