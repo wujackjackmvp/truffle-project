@@ -4,6 +4,8 @@ import { InjectedConnector } from 'wagmi/connectors/injected';
 import { ethers } from 'ethers';
 import { LeepCoinService } from '../dapp/LeepCoinService';
 import { ExchangeService } from '../dapp/ExchangeService';
+import LeepCoinAbi from '../abi/LeepCoin.json';
+import ExchangeAbi from '../abi/Exchange.json';
 
 // 主组件
 const TokenBank = () => {
@@ -74,25 +76,13 @@ const TokenBank = () => {
   useEffect(() => {
     const fetchContractAddresses = async () => {
       try {
-        // 尝试从构建文件加载合约地址
+        // 尝试从导入的ABI文件加载合约地址
         let leepCoinAddr = '';
         let exchangeAddr = '';
         console.log('连接|断开')
         try {
-          const leepCoinData = await fetch('/src/abi/LeepCoin.json');
-          console.log('leepCoinData', leepCoinData);
-          if (leepCoinData.ok) {
-            const data = await leepCoinData.json();
-            leepCoinAddr = data.networks['5777']?.address || '';
-          }
-          
-          const exchangeData = await fetch('/src/abi/Exchange.json');
-          console.log('exchangeData', exchangeData);
-
-          if (exchangeData.ok) {
-            const data = await exchangeData.json();
-            exchangeAddr = data.networks['5777']?.address || '';
-          }
+          leepCoinAddr = LeepCoinAbi.networks['5777']?.address || '';
+          exchangeAddr = ExchangeAbi.networks['5777']?.address || '';
         } catch (error) {
           console.error('加载合约地址失败，使用默认地址:', error);
         }

@@ -116,17 +116,23 @@ contract Exchange {
     // 执行交易的内部函数
     function _trade(
         uint256 _orderId,
-        address _user,
-        address _tokenGet,
-        uint256 _amountGet,
-        address _tokenGive,
-        uint256 _amountGive
+        address _user, // 订单创建者
+        address _tokenGet, // 获取的代币地址（代币地址）
+        uint256 _amountGet, // 获取的代币数量
+        address _tokenGive, // 支付的代币地址（ETH地址）
+        uint256 _amountGive // 支付的ETH数量
     ) internal {
+        // 计算手续费
         uint256 feeAmount = _amountGive * feePercent / 100;
+        // ETH地址 B- 支付ETH+手续费
         tokens[_tokenGive][msg.sender] -= (_amountGive + feeAmount);
+        // ETH地址 A+
         tokens[_tokenGive][_user] += _amountGive;
+        // 银行收取手续费
         tokens[_tokenGive][feeAccount] += feeAmount;
+        // 减去A钱包代币
         tokens[_tokenGet][_user] -= _amountGet;
+        // 加入B钱包代币
         tokens[_tokenGet][msg.sender] += _amountGet;
         emit Trade(
             _orderId,
